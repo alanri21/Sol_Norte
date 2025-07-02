@@ -4,7 +4,7 @@
 ** Nombre de la materia: Base de datos aplicada
 ** Ingrantes:
 ** 40896369		Riquelme Alan Adriel
-** --------		--------------------
+** 41173099		Eduardo Abel Hidalgo
 ** --------		--------------------
 ******************************************/
 
