@@ -51,7 +51,7 @@ GO
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'categoria_socio')
 	CREATE TABLE socios.categoria_socio (
 	categoria_socio_id INT IDENTITY(1,1),
-	nombre_categoria VARCHAR(20) NOT NULL,
+	nombre_categoria VARCHAR(20) UNIQUE NOT NULL,
 	costo_membresia DECIMAL(18,2) NOT NULL,
 	CONSTRAINT PK_categoria_socio PRIMARY KEY (categoria_socio_id),
 	CONSTRAINT CHK_categoria_costo CHECK (costo_membresia >= 0)
@@ -88,7 +88,6 @@ IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'socio')
 	) ;
 	GO
 
-	
 ----------------------------------------------------
 -- CREACION DE STORED PROCEDURE
 ----------------------------------------------------
@@ -100,6 +99,14 @@ CREATE OR ALTER PROCEDURE insert_categoria_socio
     @par_costoMembresia  DECIMAL(18,2)
 AS
 BEGIN
+-- validaciones
+
+IF @par_nombreCategoria IS NULL OR TRIM(@par_nombreCategoria) = ''
+    BEGIN
+        RAISERROR('Debe especificar un nombre de categoría válido.', 16, 1);
+        RETURN;
+    END
+
     INSERT INTO socios.categoria_socio (nombre_categoria, costo_membresia)
     VALUES (@par_nombreCategoria, @par_costoMembresia);
 END;
@@ -113,7 +120,12 @@ CREATE OR ALTER PROCEDURE update_categoria_socio
     @par_costoMembresia   DECIMAL(18,2)
 AS
 BEGIN
-
+-- validacion
+IF @par_nombreCategoria IS NULL OR TRIM(@par_nombreCategoria) = ''
+    BEGIN
+        RAISERROR('Debe especificar un nombre de categoría válido.', 16, 1);
+        RETURN;
+    END
 UPDATE socios.categoria_socio
 SET nombre_categoria = @par_nombreCategoria,
     costo_membresia  = @par_costoMembresia
@@ -123,10 +135,11 @@ END;
 GO
 
 --DELETE
-CREATE OR ALTER PROCEDURE  socios.delete_CategoriaSocio
+CREATE OR ALTER PROCEDURE  delete_CategoriaSocio
     @par_categoriaSocioID INT
 AS
 BEGIN
+
 DELETE FROM socios.categoria_socio
 WHERE categoria_socio_id = @par_categoriaSocioID;
 
@@ -240,3 +253,4 @@ BEGIN
     WHERE nro_socio = @par_nro_socio;
 END;
 GO
+
