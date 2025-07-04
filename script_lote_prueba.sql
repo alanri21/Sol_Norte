@@ -5,7 +5,7 @@
 ** Ingrantes:
 ** 40896369		Riquelme Alan Adriel
 ** 41173099		Eduardo Abel Hidalgo
-** --------		--------------------
+** 43406784		Lucas Rodrigo Grance Zenteno
 ******************************************/
 
 USE Sol_Norte;
@@ -15,8 +15,8 @@ GO
 -- Tabla socios.categoria_socio
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
--- Prueba 1: INSERT v·lido
--- DescripciÛn: Inserta categorÌa 'Bronce' con costo 150.00
+-- Prueba 1: INSERT v√°lido
+-- Descripci√≥n: Inserta categor√≠a 'Bronce' con costo 150.00
 -- Resultado esperado: Se inserta la fila sin errores
 --------------------------------------------------------------------------------
 EXEC insert_categoria_socio
@@ -31,9 +31,9 @@ SELECT *
 GO
 
 --------------------------------------------------------------------------------
--- Prueba 2: INSERT inv·lido ñ costo negativo
--- DescripciÛn: intenta insertar categorÌa 'Plata' con costo -20.00
--- Resultado esperado: Error 'El costo de membresÌa debe ser >= 0.'
+-- Prueba 2: INSERT inv√°lido ‚Äì costo negativo
+-- Descripci√≥n: intenta insertar categor√≠a 'Plata' con costo -20.00
+-- Resultado esperado: Error 'El costo de membres√≠a debe ser >= 0.'
 --------------------------------------------------------------------------------
 EXEC insert_categoria_socio
     @par_nombreCategoria = 'Plata',
@@ -41,8 +41,8 @@ EXEC insert_categoria_socio
 GO
 
 --------------------------------------------------------------------------------
--- Prueba 3: UPDATE v·lido
--- DescripciÛn: modifica la categorÌa 'Bronce' a 'Bronce Plus', costo 175.00
+-- Prueba 3: UPDATE v√°lido
+-- Descripci√≥n: modifica la categor√≠a 'Bronce' a 'Bronce Plus', costo 175.00
 -- Resultado esperado: Se actualiza la fila sin errores
 --------------------------------------------------------------------------------
 
@@ -64,9 +64,9 @@ SELECT *
 GO
 
 --------------------------------------------------------------------------------
--- Prueba 4: UPDATE inv·lido ñ nombre vacÌo
--- DescripciÛn: intenta dejar nombre en ''
--- Resultado esperado: Error 'Debe especificar un nombre de categorÌa v·lido.'
+-- Prueba 4: UPDATE inv√°lido ‚Äì nombre vac√≠o
+-- Descripci√≥n: intenta dejar nombre en ''
+-- Resultado esperado: Error 'Debe especificar un nombre de categor√≠a v√°lido.'
 --------------------------------------------------------------------------------
 -- Identificamos el ID de 'Bronce Plus'
 DECLARE @idBroncePlus INT;
@@ -81,8 +81,8 @@ EXEC update_categoria_socio
 GO
 
 --------------------------------------------------------------------------------
--- Prueba 5: DELETE v·lido
--- DescripciÛn: elimina la categorÌa reciÈn creada (ID = @idBronce)
+-- Prueba 5: DELETE v√°lido
+-- Descripci√≥n: elimina la categor√≠a reci√©n creada (ID = @idBronce)
 -- Resultado esperado: La fila se borra sin errores
 --------------------------------------------------------------------------------
 -- Identificamos el ID de 'Bronce Plus'
