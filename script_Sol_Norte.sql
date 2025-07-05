@@ -277,6 +277,201 @@ BEGIN
 END;
 GO
 
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'cuota')
+BEGIN
+    CREATE TABLE socios.cuota (
+        cuota_id        INT           IDENTITY(1,1) NOT NULL,
+        nro_socio       INT           NOT NULL,
+        inscripcion_id  INT           NOT NULL,
+        monto           DECIMAL(18,2) NOT NULL,
+        fec_vencimiento DATE          NOT NULL,
+        estado          VARCHAR(10)   NOT NULL,
+        CONSTRAINT PK_cuota PRIMARY KEY (cuota_id),
+        CONSTRAINT FK_cuota_socio FOREIGN KEY (nro_socio)
+            REFERENCES socios.socio(nro_socio),
+        CONSTRAINT FK_cuota_inscripcion FOREIGN KEY (inscripcion_id)
+            REFERENCES actividades.inscripcion_act(inscripcion_id),
+		CONSTRAINT CHK_cuota_monto CHECK (monto >= 0),
+		CONSTRAINT CHK_cuota_estado CHECK (estado IN ('pendiente','pagada','vencida'))
+    );
+END;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'invitado')
+BEGIN
+    CREATE TABLE socios.invitado (
+        invitado_id      INT           IDENTITY(1,1) NOT NULL,
+        tarifa_invitado  DECIMAL(18,2) NOT NULL,
+        CONSTRAINT PK_invitado PRIMARY KEY (invitado_id),
+		CONSTRAINT CHK_invitado_tarifa CHECK (tarifa_invitado >= 0)
+    );
+END;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'factura')
+BEGIN
+    CREATE TABLE tesoreria.factura (
+        nro_factura               INT           IDENTITY(1,1) NOT NULL,
+        nro_socio                 INT           NOT NULL,
+        cuota_id                  INT           NULL,
+        invitado_id               INT           NULL,
+        fec_emision               DATE          NOT NULL,
+        fec_primer_vto            DATE          NOT NULL,
+        estado                    VARCHAR(10)   NOT NULL,
+        fec_segundo_vto           DATE          NULL,
+        importe_total_primer_venc DECIMAL(18,2) NOT NULL,
+        importe_total_segundo_venc DECIMAL(18,2) NOT NULL,
+        CONSTRAINT PK_factura PRIMARY KEY (nro_factura),
+        CONSTRAINT FK_factura_socio FOREIGN KEY (nro_socio)
+            REFERENCES socios.socio(nro_socio),
+        CONSTRAINT FK_factura_cuota FOREIGN KEY (cuota_id)
+            REFERENCES socios.cuota(cuota_id),
+        CONSTRAINT FK_factura_invitado FOREIGN KEY (invitado_id)
+            REFERENCES socios.invitado(invitado_id),
+		CONSTRAINT CHK_factura_estado CHECK (estado IN ('emitida','anulada')),
+		CONSTRAINT CHK_factura_imp2 CHECK (importe_total_segundo_venc >= 0),
+		CONSTRAINT CHK_factura_imp1 CHECK (importe_total_primer_venc >= 0)
+    );
+END;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'nota_credito')
+BEGIN
+    CREATE TABLE tesoreria.nota_credito (
+        nro_nota_credito   INT           IDENTITY(1,1) NOT NULL,
+        nro_factura        INT           NOT NULL,
+        fec_emision_nc     DATE          NOT NULL,
+        importe_anulado    DECIMAL(18,2) NOT NULL,
+        cae_nc             VARCHAR(50)   NULL,
+        vto_cae_nc         DATE          NULL,
+        CONSTRAINT PK_nota_credito PRIMARY KEY (nro_nota_credito),
+        CONSTRAINT FK_nota_credito_factura FOREIGN KEY (nro_factura)
+            REFERENCES tesoreria.factura(nro_factura),
+        CONSTRAINT CHK_notacredito_importe CHECK (importe_anulado >= 0)
+    );
+END;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'descuento')
+BEGIN
+    CREATE TABLE tesoreria.descuento (
+        descuento_id         INT           IDENTITY(1,1) NOT NULL,
+        descripcion          VARCHAR(100)  NOT NULL,
+        porcentaje_descuento DECIMAL(5,2)  NOT NULL,
+        CONSTRAINT PK_descuento PRIMARY KEY (descuento_id),
+		CONSTRAINT CHK_descuento_porcentaje CHECK (porcentaje_descuento BETWEEN 0 AND 100)
+    );
+END;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'detalle_factura')
+BEGIN
+    CREATE TABLE tesoreria.detalle_factura (
+        detalle_factura_id   INT           IDENTITY(1,1) NOT NULL,
+        categoria_socio_id   INT           NULL,
+        nro_factura          INT           NOT NULL,
+        cuota_id             INT           NULL,
+        inscripcion_id_act   INT           NULL,
+        inscripcion_id_ex    INT           NULL,
+        descuento_id         INT           NULL,
+        detalle_concepto     VARCHAR(200)  NOT NULL,
+        cantidad             INT           NOT NULL,
+        precio_unitario      DECIMAL(18,2) NOT NULL,
+        subtotal             DECIMAL(18,2) NOT NULL,
+        CONSTRAINT PK_detalle_factura PRIMARY KEY (detalle_factura_id),
+        CONSTRAINT FK_detfac_factura FOREIGN KEY (nro_factura)
+            REFERENCES tesoreria.factura(nro_factura),
+        CONSTRAINT FK_detfac_socioCat FOREIGN KEY (categoria_socio_id)
+            REFERENCES socios.categoria_socio(categoria_socio_id),
+        CONSTRAINT FK_detfac_cuota FOREIGN KEY (cuota_id)
+            REFERENCES socios.cuota(cuota_id),
+        CONSTRAINT FK_detfac_inscAct FOREIGN KEY (inscripcion_id_act)
+            REFERENCES actividades.inscripcion_act(inscripcion_id),
+        CONSTRAINT FK_detfac_inscEx FOREIGN KEY (inscripcion_id_ex)
+            REFERENCES actividades.inscripcion_act_extra(inscripcion_extra_id),
+        CONSTRAINT FK_detfac_descuento FOREIGN KEY (descuento_id)
+            REFERENCES tesoreria.descuento(descuento_id),
+		CONSTRAINT CHK_detalle_cantidad CHECK (cantidad > 0),
+		CONSTRAINT CHK_detalle_precio CHECK (precio_unitario >= 0)
+    );
+END;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'morosidad')
+BEGIN
+    CREATE TABLE tesoreria.morosidad (
+        morosidad_id       INT           IDENTITY(1,1) NOT NULL,
+        nro_factura        INT           NOT NULL,
+        fec_inicio_mora    DATE          NOT NULL,
+        estado_mora        VARCHAR(12)   NOT NULL,
+        fec_regularizacion DATE         NULL,
+        CONSTRAINT PK_morosidad PRIMARY KEY (morosidad_id),
+        CONSTRAINT FK_morosidad_factura FOREIGN KEY (nro_factura)
+            REFERENCES tesoreria.factura(nro_factura),
+		CONSTRAINT CHK_morosidad_estado CHECK (estado_mora IN ('Activa','Regularizada'))
+    );
+END;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'medio_pago')
+BEGIN
+    CREATE TABLE tesoreria.medio_pago (
+        medio_pago_id           INT           IDENTITY(1,1) NOT NULL,
+        nombre_medio            VARCHAR(30)   NOT NULL,
+        debito_automatico_flag  BIT           NOT NULL,
+        CONSTRAINT PK_medio_pago PRIMARY KEY (medio_pago_id),
+		CONSTRAINT CHK_mediopago_nombre CHECK ( nombre_medio IN (
+                                      'Visa',
+                                      'MasterCard',
+                                      'Tarjeta Naranja',
+                                      'Pago Fácil',
+                                      'Rapipago',
+                                      'Transferencia Mercado Pago'))
+    );
+END;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'pago')
+BEGIN
+    CREATE TABLE tesoreria.pago (
+        pago_id                  INT           IDENTITY(1,1) NOT NULL,
+        factura_id               INT           NOT NULL,
+        medio_pago_id            INT           NOT NULL,
+        modalidad_pago           VARCHAR(20)   NOT NULL,
+        fecha_pago               DATE          NOT NULL,
+        monto_pagado             DECIMAL(18,2) NOT NULL,
+        estado_transaccion       VARCHAR(12)   NOT NULL,
+        codigo_aprobacion_banco  VARCHAR(50)   NULL,
+        CONSTRAINT PK_pago PRIMARY KEY (pago_id),
+        CONSTRAINT FK_pago_factura FOREIGN KEY (factura_id)
+            REFERENCES tesoreria.factura(nro_factura),
+        CONSTRAINT FK_pago_mediopago FOREIGN KEY (medio_pago_id)
+            REFERENCES tesoreria.medio_pago(medio_pago_id),
+		CONSTRAINT CHK_pago_modalidad CHECK (modalidad_pago IN ('Manual','Debito automatico')),
+		CONSTRAINT CHK_pago_monto CHECK (monto_pagado >= 0),
+		CONSTRAINT CHK_pago_estado CHECK (estado_transaccion IN ('Pendiente','Confirmado','Rechazado'))
+    );
+END;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ajuste_pago')
+BEGIN
+    CREATE TABLE tesoreria.ajuste_pago (
+        ajuste_pago_id INT           IDENTITY(1,1) NOT NULL,
+        pago_id        INT           NOT NULL,
+        tipo_ajuste    VARCHAR(20)   NOT NULL,
+        monto_ajuste   DECIMAL(18,2) NOT NULL,
+        fec_ajuste     DATE          NOT NULL,
+        descripcion    VARCHAR(200)  NULL,
+        CONSTRAINT PK_ajuste_pago PRIMARY KEY (ajuste_pago_id),
+        CONSTRAINT FK_ajuste_pago_pago FOREIGN KEY (pago_id)
+            REFERENCES tesoreria.pago(pago_id),
+		CONSTRAINT CHK_ajuste_pago_tipo CHECK (tipo_ajuste IN ('Reembolso','Pago_a_Cuenta')),
+		CONSTRAINT CHK_ajuste_pago_monto CHECK (monto_ajuste >= 0)
+    );
+END;
+GO
+
 ----------------------------------------------------
 -- CREACION DE STORED PROCEDURE
 ----------------------------------------------------
