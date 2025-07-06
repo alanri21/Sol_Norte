@@ -334,7 +334,7 @@ WHERE categoria_socio_id = @par_categoriaSocioID;
 
 END;
 GO
-
+--------------------------------------------------------------------------------------------------
 -- TABLA socios.socio
 -- INSERT
 CREATE OR ALTER PROCEDURE socios.insert_socio
@@ -524,138 +524,541 @@ BEGIN
     WHERE nro_socio = @par_nro_socio;
 END;
 GO
+-------------------------------------------------------------------------------------------
+-- TABLA actividades.profesor 
+-- INSERT
 
--- CREACION DE LAS TABLAS
-----------------------------------------------------	
-IF NOT EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA ='socios' and TABLE_NAME='Inscripcion_act')
+CREATE OR ALTER PROCEDURE actividades.insert_profesor      
+        @par_nombre      VARCHAR(50),
+        @par_apellido    VARCHAR(50),
+        @par_dni         CHAR(8)   
+AS
 BEGIN
-	CREATE TABLE socios.Inscripcion_act(
-	inscripcion_id INT identity(1,1) primary key,
-	socio_id INT,
-	deporte_id INT,
-	fec_inicio DATE,
-	fec_fin DATE,
-	estado CHAR,
-	costo_base DECIMAL(10,2),
-	FOREIGN KEY(socio_id) REFERENCES socios.Socio(socio_id),
-	FOREIGN KEY (deporte_id) REFERENCES socios.Deporte(deporte_id),
-	)
-	END
-	GO
-IF NOT EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA ='socios' and TABLE_NAME='Asistencia')
-BEGIN
-	CREATE TABLE socios.Asistencia(
-	asistencia_id INT identity(1,1) primary key,
-	nro_socio INT,
-	profesor_id INT,
-	deporte_id INT,
-	fec_asistencia date,
-	estado_asistencia CHAR,	
-	 FOREIGN KEY(nro_socio) REFERENCES socios.Socio(nro_socio),
-	 FOREIGN KEY(profesor_id) REFERENCES socios.Profesor(profesor_id),
-	 FOREIGN KEY(deporte_id) REFERENCES socios.Deporte(deporte_id)
-	)
-	END
-	GO
+--validaciones
 
-IF NOT EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA ='socios' and TABLE_NAME='Profesor')
-BEGIN
-	CREATE TABLE socios.Profesor(
-	profesor_id INT identity(1,1) primary key,
-	nombre VARCHAR(50),
-	apellido VARCHAR(50),
-	DNI INT
-	)
-	END
-	GO
+    IF TRIM(@par_dni) IS NULL 
+       OR LEN(@par_dni) <> 8
+    BEGIN
+        RAISERROR('El DNI debe ser un número de 8 dígitos.', 16, 1);
+        RETURN;
+    END
 
+-- realizo el insert luego de las validaciones
 
-IF NOT EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA ='socios' and TABLE_NAME='Deporte')
-BEGIN
-	CREATE TABLE socios.Deporte(
-	deporte_id INT identity(1,1) primary key,
-	nombre_deporte VARCHAR(10),
-	costo_deporte DECIMAL(10,2),
-	dia_semana INT,
-	hora_inicio time,
-	hora_fin time
+INSERT INTO actividades.profesor(
+		nombre,
+		apellido,
+		dni
 	)
-	END
-	GO
+	VALUES(
+		@par_nombre,
+		@par_apellido,
+		@par_dni
+		);
+END;
+GO
 
-IF NOT EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA ='socios' and TABLE_NAME='Colonia_verano')
+--UPDATES
+
+CREATE OR ALTER PROCEDURE actividades.update_profesor
+	    @par_profesor_id INT
+		@par_nombre      VARCHAR(50),
+        @par_apellido    VARCHAR(50),
+        @par_dni         CHAR(8)   
+AS
 BEGIN
-	CREATE TABLE socios.Colonia_verano(
-	colonia_verano_id INT identity(1,1) primary key,
-	costo_colonia_mensual DECIMAL(10,2)
-	)
+--validaciones
+
+    IF TRIM(@par_dni) IS NULL 
+       OR LEN(@par_dni) <> 8
+    BEGIN
+        RAISERROR('El DNI debe ser un número de 8 dígitos.', 16, 1);
+        RETURN;
+    END
+
+	UPDATE actividades.profesor
+		SET
+		nombre =@par_nombre ,
+		apellido=@par_apellido ,
+		dni=@par_dni
+		where profesor_id= @profesor_id;
+END; 
+GO
+
+--DELETE
+CREATE OR ALTER PROCEDURE actividades.delete_profesor
+    @par_profesor_id INT
+AS
+BEGIN
+    DELETE FROM socios.socio
+    WHERE profesor_id = @par_profesor_id;
+END;
+GO
+---------------------------------------------------------------------------------------------------
+-- TABLA actividades.insert_deporte
+-- INSERT
+CREATE OR ALTER PROCEDURE actividades.insert_deporte
+        @par_nombre_deporte  VARCHAR(50),
+        @par_costo_deporte   DECIMAL(18,2),
+        @par_dia_semana      TINYINT,
+        @par_hora_inicio     TIME(0),
+        @par_hora_fin        TIME(0)
+
+AS
+BEGIN
+
+--Validaciones 
+	IF NOT(@PAR_dia_semana BETWEEN 1 AND 7)
+		BEGIN
+			RAISERROR('El dia debe estar entre 1 y 7', 16, 1);
+			RETURN;
+		END
+	IF @par_costo_deporte < 0
+	BEGIN
+			RAISERROR('El costo del deporte debe ser mayor a 0', 16, 1);
+			RETURN;
 	END 
-	GO
+	IF @par_hora_fin<@par_hora_inicio	
+		BEGIN
+			RAISERROR('La hora de fin debe ser mayor a la de hora de inicio',16,1)
+			RETURN;
+		END
+-- realizo el insert luego de las validaciones
+	INSERT INTO actividades.deporte(
+        nombre_deporte,
+        costo_deporte,
+        dia_semana,
+        hora_inicio,
+        hora_fin
+		)
+		VALUES(
+			@par_nombre_deporte,
+			@par_costo_deporte,
+			@par_dia_semana,
+			@par_hora_inicio,
+			@par_hora_fin
+		);
+END;
+GO
 
-IF NOT EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA ='socios' and TABLE_NAME='Jornada_pileta')
+--UPDATE
+CREATE OR ALTER PROCEDURE actividades.update_deporte
+        @par_deporte_id      INT,
+		@par_nombre_deporte  VARCHAR(50),
+        @par_costo_deporte   DECIMAL(18,2),
+        @par_dia_semana      TINYINT,
+        @par_hora_inicio     TIME(0),
+        @par_hora_fin        TIME(0)
+AS
 BEGIN
-	CREATE TABLE socios.Jornada_pileta(
-	jornada_pileta_id INT identity(1,1) primary key,
-	fecha DATE,
-	reintegrable_flag BIT
-	)
-	END
-	GO
+--Validaciones 
+	IF @par_dia_semana<1 OR @par_dia_semana>31
+		BEGIN
+			RAISERROR('El dia debe estar entre 1 y 31', 16, 1);
+			RETURN;
+		END
 
-IF NOT EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA ='socios' and TABLE_NAME='Reserva_sum')
-BEGIN
-	CREATE TABLE socios.Reserva_sum(
-	reserva_sum_id INT identity(1,1) primary key,
-	fecha_reserva DATE,
-	estado CHAR
-	)
-	END
-	GO
+	IF @par_hora_fin<@par_hora_inicio	
+		BEGIN
+			RAISERROR('La hora de fin debe ser mayor a la de hora de inicio',16,1)
+			RETURN;
+		END
 
-IF NOT EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA ='socios' and TABLE_NAME='Tarifa_pileta')
-BEGIN
-	CREATE TABLE socios.Tarifa_pileta(
-	 tarifa_pileta_id INT identity(1,1)  primary key,
-	vigencia varchar(10),
-	costo_vigencia DECIMAL(10,2)
-	)
-	END
-	GO 
+	UPDATE actividades.deporte
+	SET
+		nombre_deporte=@par_nombre_deporte,
+        costo_deporte=@par_costo_deporte,
+        dia_semana=@par_dia_semana,
+        hora_inicio=@par_hora_inicio,
+        hora_fin=@par_hora_fin
+		where deporte_id=@par_deporte_id;
 
-IF NOT EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA ='socios' and TABLE_NAME='Alquiler_sum')
-BEGIN
-	CREATE TABLE socios.Alquiler_sum(
-	alquiler_sum_id INT identity(1,1) primary key,
-	costo_alquiler_sum DECIMAL(10,2)
-	)
-	END
-	GO
+END;
+GO
 
-IF NOT EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA ='socios' and TABLE_NAME='Pase_pileta')
+--DELETE
+CREATE OR ALTER PROCEDURE actividades.delete_deporte
+	@par_deporte_id INT
+AS
 BEGIN
-	CREATE TABLE socios.Pase_pileta(
-	pase_pileta_id INT identity(1,1) primary key,
-	tarifa_pileta_id INT,
-	jornada_pileta INT,
-	FOREIGN KEY (tarifa_pileta_id) REFERENCES socios.Tarifa_pileta(tarifa_pileta_id),
-	FOREIGN KEY (jornada_pileta) REFERENCES socios.Jornada_pileta(jornada_pileta_id)
-	)
-	END
-	GO
+	DELETE FROM  actividades.deporte
+    WHERE deporte_id = @par_deporte_id;
+END;
+GO
+---------------------------------------------------------------------------------------------------
+-- TABLA actividades.insert_asistencia
+-- INSERT
+    CREATE OR ALTER PROCEDURE actividades.insert_asistencia
+        @par_nro_socio         INT,
+        @par_profesor_id       INT,
+        @par_deporte_id        INT,
+        @par_fec_asistencia    DATE,
+        @par_estado_asistencia CHAR(1)
+AS
+BEGIN
+--validaciones
 
-IF NOT EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA ='socios' and TABLE_NAME='inscripcion_act_extra')
-BEGIN
-	CREATE TABLE socios.Inscripcion_act_extra(
-	inscripcion_id INT identity(1,1) primary key,
-	socio_id INT,
-	colonia_verano_id INT,
-	pase_pileta_id INT,
-	fecha_inicio DATE,
-	fecha_fin DATE,
-	costo_base DECIMAL(10,2)	
-	FOREIGN KEY (socio_id) REFERENCES socios.Socio(socio_id),
-	FOREIGN KEY (colonia_verano_id) REFERENCES socios.Colonia_verano(Colonia_verano_id),
-	FOREIGN KEY (pase_pileta_id) REFERENCES socios.Pase_pileta(pase_pileta_id),
-	)
+	IF @par_fec_asistencia>GETDATE()
+	BEGIN
+		RAISERROR('La fecha de asistencia debe ser menor o igual a la fecha actual',16,1)
+		RETURN;
 	END
-	GO
+
+	IF NOT (@par_estado_asistencia IN('J','A','P'))
+	BEGIN
+		RAISERROR('El estado de la asistencia debe tener de valor J, A o P',16,1)
+		RETURN;
+	END
+
+-- realizo el insert luego de las validaciones
+	INSERT INTO actividades.asistencia(
+        nro_socio,
+        profesor_id,
+        deporte_id,
+        fec_asistencia,
+        estado_asistencia	
+	)
+	VALUES(
+	    @par_nro_socio,
+        @par_profesor_id,
+        @par_deporte_id,
+        @par_fec_asistencia,
+        @par_estado_asistencia
+	);
+END;
+GO
+
+--UPDATE
+
+CREATE OR ALTER PROCEDURE actividades.update_asistencia
+        @par_asistencia_id	   INT,
+		@par_nro_socio         INT,
+        @par_profesor_id       INT,
+        @par_deporte_id        INT,
+        @par_fec_asistencia    DATE,
+        @par_estado_asistencia CHAR(1)
+AS
+BEGIN
+--validaciones 
+	IF @par_fec_asistencia>GETDATE()
+	BEGIN
+		RAISERROR('La fecha de asistencia debe ser menor o igual a la fecha actual',16,1)
+		RETURN;
+	END
+
+	IF NOT (@par_estado_asistencia IN('J','A','P'))
+	BEGIN
+		RAISERROR('El estado de la asistencia debe tener de valor J, A o P',16,1)
+		RETURN;
+	END
+
+	UPDATE actividades.asitencia
+	SET
+		nro_socio=@par_nro_socio,
+        profesor_id=@par_profesor_id,
+        deporte_id=@par_deporte_id,
+        @par_fec_asistencia,
+        @par_estado_asistencia
+		where asistencia_id=@par_asistencia_id
+END;
+GO
+
+--DELETE
+CREATE OR ALTER PROCEDURE actividades.delete_asistencia
+		@par_asistencia_id INT
+AS
+BEGIN
+	DELETE FROM actividades.asistencia
+	WHERE @par_asistencia_id = asistencia_id;
+END;
+GO
+---------------------------------------------------------------------------------------------------
+-- TABLA actividades.inscripcion_act
+-- INSERT
+CREATE OR ALTER PROCEDURE actividades.insert_inscripcion_act
+        @par_socio_id       INT,
+        @par_deporte_id     INT,
+        @par_fec_inicio     DATE,
+        @par_fec_fin        DATE,
+        @par_estado         VARCHAR(20), 
+        @par_costo_base     DECIMAL(18,2)
+AS
+BEGIN
+--validaciones
+       IF @par_fec_fin < @par_fec_inicio
+	   BEGIN
+			RAISERROR('La fecha de fin debe ser menor a la fecha de inicio', 16, 1);
+			RETURN;
+	   END
+		IF NOT(@par_estado IN ('pendiente','pagada','vencida'))
+		BEGIN
+			RAISERROR('El valor de estado debe ser pendiente, pagada o vencida', 16, 1);
+			RETURN;
+		END
+		IF @par_costo_base < 0
+		BEGIN
+			RAISERROR('El costo base no debe ser menor a 0', 16, 1);
+			RETURN;
+		END
+
+	INSERT INTO actividades.inscripcion_act(
+        socio_id,
+        deporte_id,
+        fec_inicio,
+        fec_fin,
+        estado,
+        costo_base
+	)
+	VALUES(
+        @par_socio_id,
+        @par_deporte_id,
+        @par_fec_inicio,
+        @par_fec_fin,
+        @par_estado, 
+        @par_costo_base
+	);
+END;
+GO
+--UPDATE
+CREATE OR ALTER actividades.update_inscripcion
+	    @par_inscripcion_id INT,
+        @par_socio_id       INT,
+        @par_deporte_id     INT,
+        @par_fec_inicio     DATE,
+        @par_fec_fin        DATE,
+        @par_estado         VARCHAR(20),
+        @par_costo_base     DECIMAL(18,2)
+AS
+BEGIN
+--validaciones
+       IF @par_fec_fin < @par_fec_inicio
+	   BEGIN
+			RAISERROR('La fecha de fin debe ser menor a la fecha de inicio', 16, 1);
+			RETURN;
+	   END
+		IF NOT(@par_estado IN ('pendiente','pagada','vencida'))
+		BEGIN
+			RAISERROR('El valor de estado debe ser pendiente, pagada o vencida', 16, 1);
+			RETURN;
+		END
+		IF @par_costo_base < 0
+		BEGIN
+			RAISERROR('El costo base no debe ser menor a 0', 16, 1);
+			RETURN;
+		END
+
+		UPDATE actividades.inscripcion_act
+		SET
+			socio_id=@par_socio_id,
+			deporte_id=@par_deporte_id,
+			fec_inicio=@par_fec_inicio,
+			fec_fin=@par_fec_fin,
+			estado=@par_estado,
+			costo_base=@par_costo_base
+			WHERE inscripcion_id=@par_inscripcion_id;
+END;
+GO
+
+--DELETE 
+
+CREATE OR ALTER PROCEDURE actividades.delete_inscripcion_act
+		@par_incripcion_id INT
+AS
+BEGIN
+	DELETE FROM actividades.inscripcion_act
+	WHERE @par_incripcion_id=inscripcion_id;
+END;
+GO
+---------------------------------------------------------------------------------------------------
+-- TABLA actividades.reserva_sum
+-- INSERT
+CREATE OR ALTER actividades.insert_reserva_sum
+        @par_costo_alquiler_sum  DECIMAL(18,2)
+AS
+BEGIN
+
+--validaciones
+	IF @par_costo_alquiler_sum <0
+	BEGIN
+			RAISERROR('El costo de alquiler no debe ser menor a 0', 16, 1);
+			RETURN;
+	END
+-- realizo el insert luego de las validaciones
+	INSERT INTO actividades.reserva_sum(
+		costo_alquiler_sum
+	)
+	VALUES(
+	@par_costo_alquiler_sum
+	);
+END;
+GO
+
+--UPDATE
+CREATE OR ALTER PROCEDURE actividades.update_reserva_sum
+		@par_alquiler_sum_id INT,
+        @par_costo_alquiler_sum DECIMAL(18,2)
+AS
+BEGIN
+--validaciones 
+	IF @par_costo_alquiler_sum <0
+	BEGIN
+			RAISERROR('El costo de alquiler no debe ser menor a 0', 16, 1);
+			RETURN;
+	END
+	
+	UPDATE actividades.reserva_sum
+	SET
+		costo_alquiler_sum=@par_costo_alquiler_sum
+	WHERE alquiler_sum_id=@par_alquiler_sum_id
+END;
+GO
+
+--DELETE
+CREATE OR ALTER actividades.delete_reserva_sum
+		@par_alquiler_sum_id INT
+AS
+BEGIN
+		DELETE FROM actividades.reserva_sum
+		WHERE alquiler_sum_id= @par_alquiler_sum_id
+END;
+GO
+---------------------------------------------------------------------------------------------------
+-- TABLA actividades.pase_pileta
+-- INSERT
+
+CREATE OR ALTER actividades.insert_pase_pileta 
+        @par_tarifa_pileta_id  INT,
+        @par_jornada_id        INT
+AS
+BEGIN
+	INSERT INTO actividades.pase_pileta (
+        tarifa_pileta_id,
+        jornada_id,
+	)
+	VALUES(
+        @par_tarifa_pileta_id,
+        @par_jornada_id
+	);
+END;
+GO
+
+--UPDATE
+CREATE OR ALTER actividades.update_pase_pileta
+		@par_pase_pileta_id    INT ,
+        @par_tarifa_pileta_id  INT,
+        @par_jornada_id        INT
+AS
+BEGIN
+	UPDATE actividades.pase_pileta
+	SET
+        tarifa_pileta_id=@par_tarifa_pileta_id,
+        jornada_id=@par_jornada_id
+		WHERE pase_pileta_id=@par_pase_pileta_id
+
+END;
+GO
+
+--DELETE
+CREATE OR ALTER PROCEDURE actividades.delete_pase_pileta
+		@par_pase_pileta_id INT
+AS
+BEGIN
+		DELETE FROM actividades.pase_pileta
+		WHERE @par_pase_pileta_id= pase_pileta_id
+END;
+GO
+---------------------------------------------------------------------------------------------------
+-- TABLA actividades.inscripcion_act_extra
+-- INSERT
+CREATE OR ALTER PROCEDURE actividades.inscripcion_act_extra
+        @par_socio_id              INT,
+        @par_colonia_verano_id     INT,
+        @par_alquiler_sum_id       INT,
+        @par_pase_pileta_id        INT,
+        @par_fec_inicio            DATE,
+        @par_fec_fin               DATE,
+        @par_costo_base            DECIMAL(18,2)
+AS
+BEGIN
+--validaciones
+		IF @par_fec_fin < @par_fec_inicio
+		BEGIN
+			RAISERROR('La fecha de fin no debe ser menor a la fecha de inicio',16,1)
+			RETURN;
+		END
+
+		IF @par_costo_base<0
+		BEGIN
+			RAISERROR('El costo base no debe ser menor a 0',16,1)
+			RETURN;
+		END
+
+-- realizo el insert luego de las validaciones
+	INSERT INTO actividades.inscripcion_act_extra(
+        socio_id ,
+        colonia_verano_id,
+        alquiler_sum_id,
+        pase_pileta_id,
+        fec_inicio,
+        fec_fin,
+        costo_base
+	)
+	VALUES(
+		@par_socio_id ,
+        @par_colonia_verano_id,
+        @par_alquiler_sum_id,
+        @par_pase_pileta_id,
+        @par_fec_inicio,
+        @par_fec_fin,
+        @par_costo_base
+		);
+END;
+GO
+
+--UPDATE
+CREATE OR ALTER PROCEDURE actividades.update_inscripcion_act_extra
+        @par_inscripcion_extra_id  INT,
+        @par_socio_id              INT,
+        @par_colonia_verano_id     INT,
+        @par_alquiler_sum_id       INT,
+        @par_pase_pileta_id        INT,
+        @par_fec_inicio            DATE,
+        @par_fec_fin               DATE,
+        @par_costo_base            DECIMAL(18,2) 
+AS
+BEGIN
+--validaciones
+		IF @par_fec_fin < @par_fec_inicio
+		BEGIN
+			RAISERROR('La fecha de fin no debe ser menor a la fecha de inicio',16,1)
+			RETURN;
+		END
+
+		IF @par_costo_base<0
+		BEGIN
+			RAISERROR('El costo base no debe ser menor a 0',16,1)
+			RETURN;
+		END
+
+		UPDATE actividades.inscripciones_act_extra
+		SET
+		socio_id=@par_socio_id ,
+        colonia_verano_id=@par_colonia_verano_id,
+        alquiler_sum_id=@par_alquiler_sum_id,
+        pase_pileta_id=@par_pase_pileta_id,
+        fec_inicio=@par_fec_inicio,
+        fec_fin=@par_fec_fin,
+        costo_base=@par_costo_base
+		WHERE @par_inscripcion_extra_id=inscripcion_extra_id
+END;
+GO
+
+--DELETE
+CREATE OR ALTER PROCEDURE actividades.delete_inscripcion_act_extra
+		@par_inscripcion_extra_id INT
+AS
+BEGIN
+	DELETE FROM actividades.inscripcion_act_extra
+	WHERE @par_inscripcion_extra_id = inscripcion_extra_id;
+END;
+GO
